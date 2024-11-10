@@ -1,6 +1,6 @@
 # app.py
 import streamlit as st
-import time
+from streamlit_autorefresh import st_autorefresh
 from database import (adicionar_usuario, listar_usuarios, adicionar_boulder, 
                       listar_boulders, adicionar_pontuacao, listar_pontuacoes_por_usuario,
                       calcular_ranking, verificar_nome_existente, verificar_boulder_existente,
@@ -134,11 +134,14 @@ elif menu == "Lançamento de Pontuação":
     else:
         st.warning("Cadastre pelo menos um participante e um boulder antes de lançar pontuação.")
 
+# Intervalo de atualização automática em milissegundos
+intervalo_atualizacao = 10000  # 10 segundos
+
 if menu == "Ranking Público":
     st.header("Ranking de Participantes")
     
-    # Defina o intervalo de atualização automática em milissegundos (10.000 ms = 10 segundos)
-    st_autorefresh(interval=10000, limit=None, key="ranking_refresh")
+    # Configura a atualização automática a cada 10 segundos
+    st_autorefresh(interval=intervalo_atualizacao, limit=None, key="ranking_refresh")
     
     # Exibe o ranking
     ranking = calcular_ranking()
