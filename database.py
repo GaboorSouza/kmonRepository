@@ -1,152 +1,194 @@
-# app.py
-import streamlit as st
-from streamlit_autorefresh import st_autorefresh
-from database import (adicionar_usuario, listar_usuarios, adicionar_boulder, 
-                      listar_boulders, adicionar_pontuacao, listar_pontuacoes_por_usuario,
-                      calcular_ranking, verificar_nome_existente, verificar_boulder_existente,
-                      atualizar_pontuacao, remover_pontuacao, remover_usuario, remover_boulder)
+# database.py
+import sqlite3
+from sqlite3 import IntegrityError
+from datetime import datetime
+import pandas as pd
 
-st.title("Open de Boulder - Kmon de escalada")
+# Conecta ao banco de dados
+def conecta_banco():
+    conn = sqlite3.connect("campeonato_escalada.db")
+    return conn
 
-# Opções de pontuação
-TIPOS_PONTUACAO = ["Flash", "Cadena", "Insucesso"]
-
-# Opções de categoria
-CATEGORIAS = [""] + [
-    "Infantil A", "Infantil B", "Juvenil A", "Juvenil B",
-    "Juvenil C", "Junior", "Iniciante", "Amador", "Pro", "Master"
-]
-
-# Opções de Sexo
-SEXO = [""] + ["Masculino", "Feminino"]
-
-# Barra lateral para navegação
-menu = st.sidebar.selectbox("Menu", ["Ranking Público", "Cadastro de Participantes", "Cadastro de Boulder", "Lançamento de Pontuação"])
-
-if menu == "Cadastro de Participantes":
-    st.header("Cadastro de Participantes")
+# Inicializa as tabelas do banco de dados com a estrutura correta
+def inicializa_banco():
+    conn = conecta_banco()
+    cursor = conn.cursor()
     
-    # Formulário de cadastro de participantes
-    with st.form("adicionar_usuario"):
-        nome = st.text_input("Nome")
-        categoria = st.selectbox("Categoria do Participante", CATEGORIAS, index=0)
-        sexo = st.selectbox("Sexo", SEXO, index=0)
-        submit = st.form_submit_button("Adicionar Participante")
-        
-        # Validação e cadastro
-        if submit:
-            if not nome:
-                st.error("O campo Nome é obrigatório.")
-            elif categoria == "":
-                st.error("Selecione uma categoria para o participante.")
-            elif sexo == "":
-                st.error("Selecione o sexo.")
-            elif verificar_nome_existente(nome):
-                st.error("Esse nome já está cadastrado. Tente um nome diferente.")
-            else:
-                adicionar_usuario(nome, categoria, sexo)
-                st.success("Participante adicionado com sucesso!")
-                st.experimental_rerun()  # Recarrega a lista de participantes
-    
-    # Exibir a lista de participantes com opção de remover
-    st.subheader("Lista de Participantes")
-    usuarios = listar_usuarios()
-    for usuario in usuarios:
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.write(f"ID: {usuario[0]} | Nome: {usuario[1]} | Sexo: {usuario[3]} | Categoria: {usuario[2]}")
-        with col2:
-            if st.button("Remover", key=f"remover_usuario_{usuario[0]}"):
-                remover_usuario(usuario[0])
-                st.warning("Participante removido.")
-                st.experimental_rerun()
+    # Criação da tabela de usuários
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            categoria TEXT,
+            sexo TEXT
+        )
+    ''')
+
+    # Criação da tabela de boulders com coluna de pontuação
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS boulders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL UNIQUE,
+            pontuacao INTEGER NOT NULL  -- Nova coluna de pontuação
+        )
+    ''')
+
+    # Criação da tabela de pontuações
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pontuacoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            boulder_id INTEGER,
+            tipo_pontuacao TEXT,
+            data TEXT,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id),
+            FOREIGN KEY (boulder_id) REFERENCES boulders (id)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+# Funções de CRUD para a tabela de usuários
+def adicionar_usuario(nome, categoria, sexo):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO usuarios (nome, categoria, sexo) VALUES (?, ?, ?)", (nome, categoria, sexo))
+        conn.commit()
+    except IntegrityError:
+        print("Erro: Não foi possível cadastrar o usuário.")
+    conn.close()
+
+def listar_usuarios():
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM usuarios")
+    usuarios = cursor.fetchall()
+    conn.close()
+    return usuarios
+
+def remover_usuario(usuario_id):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
+    conn.commit()
+    conn.close()
+
+# Funções para a tabela de boulders
+def adicionar_boulder(nome, pontuacao):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO boulders (nome, pontuacao) VALUES (?, ?)", (nome, pontuacao))
+    conn.commit()
+    conn.close()
 
 
-elif menu == "Cadastro de Boulder":
-    st.header("Cadastro de Boulder")
-    
-    # Formulário de cadastro de boulders com campo de pontuação
-    with st.form("adicionar_boulder"):
-        nome_boulder = st.text_input("Nome do Boulder")
-        pontuacao_boulder = st.number_input("Pontuação Base do Boulder", min_value=0, step=1)  # Novo campo de pontuação base
-        submit_boulder = st.form_submit_button("Adicionar Boulder")
-        
-        # Validação e cadastro
-        if submit_boulder:
-            if not nome_boulder:
-                st.error("O campo Nome do Boulder é obrigatório.")
-            elif verificar_boulder_existente(nome_boulder):
-                st.error("Esse boulder já está cadastrado. Tente um nome diferente.")
-            else:
-                adicionar_boulder(nome_boulder, pontuacao_boulder)
-                st.success("Boulder adicionado com sucesso!")
-                st.experimental_rerun()  # Recarrega a lista de boulders
-    
-    # Exibir a lista de boulders com opção de remover
-    st.subheader("Lista de Boulders")
-    boulders = listar_boulders()
-    for boulder in boulders:
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.write(f"ID: {boulder[0]}, Nome: {boulder[1]}, Pontuação Base: {boulder[2]}")
-        with col2:
-            if st.button("Remover", key=f"remover_boulder_{boulder[0]}"):
-                remover_boulder(boulder[0])
-                st.warning("Boulder removido.")
-                st.experimental_rerun()
+def listar_boulders():
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM boulders")
+    boulders = cursor.fetchall()
+    conn.close()
+    return boulders
 
-elif menu == "Lançamento de Pontuação":
-    st.header("Lançamento de Pontuação")
-    
-    # Listar participantes e boulders
-    usuarios = listar_usuarios()
-    boulders = listar_boulders()
-    
-    if usuarios and boulders:
-        # Selecionar o participante
-        usuario_id = st.selectbox("Selecionar Participante", [user[0] for user in usuarios], format_func=lambda x: [u[1] for u in usuarios if u[0] == x][0])
+def remover_boulder(boulder_id):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM boulders WHERE id = ?", (boulder_id,))
+    conn.commit()
+    conn.close()
 
-        # Formulário para adicionar nova pontuação
-        st.subheader("Adicionar Nova Pontuação")
-        boulder_id = st.selectbox("Selecionar Boulder", [b[0] for b in boulders], format_func=lambda x: [b[1] for b in boulders if b[0] == x][0])
-        tipo_pontuacao = st.selectbox("Tipo de Pontuação", TIPOS_PONTUACAO)
-        
-        if st.button("Lançar Pontuação"):
-            adicionar_pontuacao(usuario_id, boulder_id, tipo_pontuacao)
-            st.success("Pontuação adicionada com sucesso!")
-            st.experimental_rerun()
-        
-        # Listar pontuações do participante selecionado abaixo do botão
-        st.subheader("Pontuações do Participante")
-        pontuacoes = listar_pontuacoes_por_usuario(usuario_id)
-        if pontuacoes:
-            for pontuacao in pontuacoes:
-                col1, col2 = st.columns([6, 2])  # Ajusta as colunas para remover o botão Editar
-                with col1:
-                    st.write(f"Boulder: {pontuacao[1]}, Tipo: {pontuacao[2]}")
-                with col2:
-                    if st.button("Remover", key=f"remover_{pontuacao[0]}"):
-                        remover_pontuacao(pontuacao[0])
-                        st.warning("Pontuação removida.")
-                        st.experimental_rerun()
-        else:
-            st.info("Nenhuma pontuação registrada para este participante.")
-    else:
-        st.warning("Cadastre pelo menos um participante e um boulder antes de lançar pontuação.")
+# Funções para pontuações
+def adicionar_pontuacao(usuario_id, boulder_id, tipo_pontuacao):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("INSERT INTO pontuacoes (usuario_id, boulder_id, tipo_pontuacao, data) VALUES (?, ?, ?, ?)", 
+                   (usuario_id, boulder_id, tipo_pontuacao, data))
+    conn.commit()
+    conn.close()
 
-# Intervalo de atualização automática em milissegundos
-intervalo_atualizacao = 10000  # 10 segundos
+def listar_pontuacoes_por_usuario(usuario_id):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT p.id, b.nome, p.tipo_pontuacao, p.data
+        FROM pontuacoes p
+        JOIN boulders b ON p.boulder_id = b.id
+        WHERE p.usuario_id = ?
+        ORDER BY p.data DESC
+    ''', (usuario_id,))
+    pontuacoes = cursor.fetchall()
+    conn.close()
+    return pontuacoes
 
-if menu == "Ranking Público":
-    st.header("Ranking de Participantes")
-    
-    # Configura a atualização automática a cada 10 segundos
-    st_autorefresh(interval=intervalo_atualizacao, limit=None, key="ranking_refresh")
-    
-    # Exibe o ranking
-    ranking = calcular_ranking()
-    
-    if not ranking.empty:
-        st.table(ranking)
-    else:
-        st.info("Nenhum participante ou pontuação registrada.")
+def atualizar_pontuacao(pontuacao_id, boulder_id, tipo_pontuacao):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE pontuacoes 
+        SET boulder_id = ?, tipo_pontuacao = ?
+        WHERE id = ?
+    ''', (boulder_id, tipo_pontuacao, pontuacao_id))
+    conn.commit()
+    conn.close()
+
+def remover_pontuacao(pontuacao_id):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM pontuacoes WHERE id = ?", (pontuacao_id,))
+    conn.commit()
+    conn.close()
+
+def verificar_nome_existente(nome):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM usuarios WHERE nome = ?", (nome,))
+    resultado = cursor.fetchone()
+    conn.close()
+    return resultado[0] > 0
+
+def verificar_boulder_existente(nome):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM boulders WHERE nome = ?", (nome,))
+    resultado = cursor.fetchone()
+    conn.close()
+    return resultado[0] > 0
+
+def calcular_ranking():
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT u.nome AS Nome, u.categoria AS Categoria, u.sexo AS Sexo,
+               SUM(
+                   CASE 
+                       WHEN p.tipo_pontuacao = 'Flash' THEN b.pontuacao  -- Flash usa a pontuação base do boulder
+                       WHEN p.tipo_pontuacao = 'Cadena' THEN b.pontuacao - 200  -- Cadena é 200 pontos a menos que Flash
+                       ELSE 0  -- Insucesso é sempre 0
+                   END
+               ) as Pontuacao_Total
+        FROM usuarios u
+        LEFT JOIN pontuacoes p ON u.id = p.usuario_id
+        LEFT JOIN boulders b ON p.boulder_id = b.id  -- Join para obter a pontuação base do boulder
+        GROUP BY u.id
+        ORDER BY Pontuacao_Total DESC
+    ''')
+    ranking = cursor.fetchall()
+    conn.close()
+
+    # Definir o DataFrame com nomes de colunas
+    ranking_df = pd.DataFrame(ranking, columns=["Nome", "Categoria", "Sexo", "Pontuação Total"])
+    ranking_df.index = ranking_df.index + 1
+    ranking_df.index = ranking_df.index.astype(str) + "º"
+    ranking_df.index.name = "Colocação"
+
+    return ranking_df
+
+    # Definir o DataFrame com nomes de colunas
+    ranking_df = pd.DataFrame(ranking, columns=["Nome", "Categoria", "Sexo", "Pontuação Total"])
+    return ranking_df
+
+# Inicialização do banco de dados na primeira execução
+inicializa_banco()
