@@ -46,7 +46,6 @@ if menu == "Cadastro de Participantes":
             else:
                 adicionar_usuario(nome, categoria, sexo)
                 st.success("Participante adicionado com sucesso!")
-                st.experimental_rerun()  # Recarrega a lista de participantes
     
     # Exibir a lista de participantes com opção de remover
     st.subheader("Lista de Participantes")
@@ -59,7 +58,6 @@ if menu == "Cadastro de Participantes":
             if st.button("Remover", key=f"remover_usuario_{usuario[0]}"):
                 remover_usuario(usuario[0])
                 st.warning("Participante removido.")
-                st.experimental_rerun()
 
 
 elif menu == "Cadastro de Boulder":
@@ -80,7 +78,6 @@ elif menu == "Cadastro de Boulder":
             else:
                 adicionar_boulder(nome_boulder, pontuacao_boulder)
                 st.success("Boulder adicionado com sucesso!")
-                st.experimental_rerun()  # Recarrega a lista de boulders
     
     # Exibir a lista de boulders com opção de remover
     st.subheader("Lista de Boulders")
@@ -93,7 +90,6 @@ elif menu == "Cadastro de Boulder":
             if st.button("Remover", key=f"remover_boulder_{boulder[0]}"):
                 remover_boulder(boulder[0])
                 st.warning("Boulder removido.")
-                st.experimental_rerun()
 
 elif menu == "Lançamento de Pontuação":
     st.header("Lançamento de Pontuação")
@@ -114,7 +110,6 @@ elif menu == "Lançamento de Pontuação":
         if st.button("Lançar Pontuação"):
             adicionar_pontuacao(usuario_id, boulder_id, tipo_pontuacao)
             st.success("Pontuação adicionada com sucesso!")
-            st.experimental_rerun()
         
         # Listar pontuações do participante selecionado abaixo do botão
         st.subheader("Pontuações do Participante")
@@ -128,7 +123,6 @@ elif menu == "Lançamento de Pontuação":
                     if st.button("Remover", key=f"remover_{pontuacao[0]}"):
                         remover_pontuacao(pontuacao[0])
                         st.warning("Pontuação removida.")
-                        st.experimental_rerun()
         else:
             st.info("Nenhuma pontuação registrada para este participante.")
     else:
