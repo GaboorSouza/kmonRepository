@@ -134,15 +134,15 @@ elif menu == "Lançamento de Pontuação":
     else:
         st.warning("Cadastre pelo menos um participante e um boulder antes de lançar pontuação.")
 
-elif menu == "Ranking Público":
+if menu == "Ranking Público":
     st.header("Ranking de Participantes")
-            
-    # Defina o intervalo de atualização em segundos
-    intervalo_atualizacao = 10  # Atualizar a cada 30 segundos
-            
+    
+    # Defina o intervalo de atualização automática em milissegundos (10.000 ms = 10 segundos)
+    st_autorefresh(interval=10000, limit=None, key="ranking_refresh")
+    
     # Exibe o ranking
     ranking = calcular_ranking()
-            
+    
     if not ranking.empty:
         st.table(ranking)
     else:
