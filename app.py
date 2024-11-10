@@ -147,7 +147,3 @@ if menu == "Ranking Público":
         st.table(ranking)
     else:
         st.info("Nenhum participante ou pontuação registrada.")
-
-    # Lógica para atualização automática
-    time.sleep(intervalo_atualizacao)  # Espera o intervalo definido
-    st.experimental_rerun()  # Recarrega a página
