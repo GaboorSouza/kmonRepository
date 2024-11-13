@@ -152,6 +152,6 @@ if menu == "Ranking Público":
     
     # Exibir o ranking filtrado
     if not ranking.empty:
-        st.table(ranking)
+        st.dataframe(ranking, use_container_width=True)
     else:
         st.info("Nenhum participante ou pontuação registrada para os filtros selecionados.")
