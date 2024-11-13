@@ -4,7 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 from database import (adicionar_usuario, listar_usuarios, adicionar_boulder, 
                       listar_boulders, adicionar_pontuacao, listar_pontuacoes_por_usuario,
                       calcular_ranking, verificar_nome_existente, verificar_boulder_existente,
-                      atualizar_pontuacao, remover_pontuacao, remover_usuario, remover_boulder)
+                      remover_pontuacao, remover_usuario, remover_boulder)
 
 st.title("Open de Boulder - Kmon de escalada")
 
@@ -137,10 +137,21 @@ if menu == "Ranking Público":
     # Configura a atualização automática a cada 10 segundos
     st_autorefresh(interval=intervalo_atualizacao, limit=None, key="ranking_refresh")
     
-    # Exibe o ranking
+    # Obter o ranking completo
     ranking = calcular_ranking()
     
+    # Adicionar filtros de Categoria e Sexo
+    categoria_selecionada = st.selectbox("Filtrar por Categoria", ["Todas"] + CATEGORIAS[1:])
+    sexo_selecionado = st.selectbox("Filtrar por Sexo", ["Todos", "Masculino", "Feminino"])
+
+    # Aplicar os filtros ao ranking
+    if categoria_selecionada != "Todas":
+        ranking = ranking[ranking["Categoria"] == categoria_selecionada]
+    if sexo_selecionado != "Todos":
+        ranking = ranking[ranking["Sexo"] == sexo_selecionado]
+    
+    # Exibir o ranking filtrado
     if not ranking.empty:
         st.table(ranking)
     else:
-        st.info("Nenhum participante ou pontuação registrada.")
+        st.info("Nenhum participante ou pontuação registrada para os filtros selecionados.")
