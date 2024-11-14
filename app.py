@@ -6,7 +6,7 @@ from database import (adicionar_usuario, listar_usuarios, adicionar_boulder,
                       calcular_ranking, verificar_flash_existente, verificar_nome_existente, verificar_boulder_existente,
                       remover_pontuacao, remover_usuario, remover_boulder, verificar_pontuacao_existente, verificar_somente_insucesso)
 
-st.title("Open de Boulder - Kmon de escalada")
+st.title("Open de Boulder - Kmon escalada")
 
 # Opções de pontuação
 TIPOS_PONTUACAO = ["Flash", "Cadena", "Insucesso"]
