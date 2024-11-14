@@ -186,9 +186,43 @@ def calcular_ranking():
 
     return ranking_df
 
-    # Definir o DataFrame com nomes de colunas
-    ranking_df = pd.DataFrame(ranking, columns=["Nome", "Categoria", "Sexo", "Pontuação Total"])
-    return ranking_df
+    # Verifica se já existe uma pontuação do tipo "Flash" para o participante e boulder
+def verificar_flash_existente(usuario_id, boulder_id):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT COUNT(*) FROM pontuacoes 
+        WHERE usuario_id = ? AND boulder_id = ? AND tipo_pontuacao = "Flash"
+    ''', (usuario_id, boulder_id))
+    resultado = cursor.fetchone()[0]
+    conn.close()
+    return resultado > 0  # Retorna True se já existe um lançamento "Flash"
+
+# Verifica se já existe qualquer tipo de pontuação para o participante e boulder
+def verificar_pontuacao_existente(usuario_id, boulder_id):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT COUNT(*) FROM pontuacoes 
+        WHERE usuario_id = ? AND boulder_id = ?
+    ''', (usuario_id, boulder_id))
+    resultado = cursor.fetchone()[0]
+    conn.close()
+    return resultado > 0  # Retorna True se já existe alguma pontuação
+
+# Verifica se o participante tem apenas lançamentos de "Insucesso" para o boulder
+def verificar_somente_insucesso(usuario_id, boulder_id):
+    conn = conecta_banco()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT tipo_pontuacao FROM pontuacoes 
+        WHERE usuario_id = ? AND boulder_id = ?
+    ''', (usuario_id, boulder_id))
+    pontuacoes = cursor.fetchall()
+    conn.close()
+
+    # Retorna True apenas se todas as pontuações forem "Insucesso"
+    return all(p[0] == "Insucesso" for p in pontuacoes)
 
 # Inicialização do banco de dados na primeira execução
 inicializa_banco()
