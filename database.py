@@ -160,31 +160,47 @@ def verificar_boulder_existente(nome):
 def calcular_ranking():
     conn = conecta_banco()
     cursor = conn.cursor()
+    
     cursor.execute('''
-        SELECT u.nome AS Nome, u.categoria AS Categoria, u.sexo AS Sexo,
-               SUM(
+        WITH top_scores AS (
+            SELECT u.id AS usuario_id, 
+                   u.nome AS Nome,
+                   u.categoria AS Categoria, 
+                   u.sexo AS Sexo,
                    CASE 
-                       WHEN p.tipo_pontuacao = 'Flash' THEN b.pontuacao  -- Flash usa a pontuação base do boulder
-                       WHEN p.tipo_pontuacao = 'Cadena' THEN b.pontuacao - 200  -- Cadena é 200 pontos a menos que Flash
-                       ELSE 0  -- Insucesso é sempre 0
-                   END
-               ) as Pontuacao_Total
-        FROM usuarios u
-        LEFT JOIN pontuacoes p ON u.id = p.usuario_id
-        LEFT JOIN boulders b ON p.boulder_id = b.id  -- Join para obter a pontuação base do boulder
-        GROUP BY u.id
+                       WHEN p.tipo_pontuacao = 'Flash' THEN b.pontuacao
+                       WHEN p.tipo_pontuacao = 'Cadena' THEN b.pontuacao - 200
+                       ELSE 0
+                   END AS Pontuacao,
+                   ROW_NUMBER() OVER(PARTITION BY u.id ORDER BY 
+                       CASE 
+                           WHEN p.tipo_pontuacao = 'Flash' THEN b.pontuacao
+                           WHEN p.tipo_pontuacao = 'Cadena' THEN b.pontuacao - 200
+                           ELSE 0
+                       END DESC) AS ranking_pontuacao
+            FROM usuarios u
+            LEFT JOIN pontuacoes p ON u.id = p.usuario_id
+            LEFT JOIN boulders b ON p.boulder_id = b.id
+        )
+        SELECT Nome, Categoria, Sexo, 
+               SUM(Pontuacao) as Pontuacao_Total
+        FROM top_scores
+        WHERE ranking_pontuacao <= 10
+        GROUP BY usuario_id
         ORDER BY Pontuacao_Total DESC
     ''')
+    
     ranking = cursor.fetchall()
     conn.close()
 
-    # Definir o DataFrame com nomes de colunas
+    # Convertendo os resultados em um DataFrame com rótulos de coluna e posição
     ranking_df = pd.DataFrame(ranking, columns=["Nome", "Categoria", "Sexo", "Pontuação Total"])
     ranking_df.index = ranking_df.index + 1
     ranking_df.index = ranking_df.index.astype(str) + "º"
     ranking_df.index.name = "Colocação"
-
+    
     return ranking_df
+
 
     # Verifica se já existe uma pontuação do tipo "Flash" para o participante e boulder
 def verificar_flash_existente(usuario_id, boulder_id):
