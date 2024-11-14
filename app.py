@@ -3,8 +3,8 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from database import (adicionar_usuario, listar_usuarios, adicionar_boulder, 
                       listar_boulders, adicionar_pontuacao, listar_pontuacoes_por_usuario,
-                      calcular_ranking, verificar_nome_existente, verificar_boulder_existente,
-                      remover_pontuacao, remover_usuario, remover_boulder)
+                      calcular_ranking, verificar_flash_existente, verificar_nome_existente, verificar_boulder_existente,
+                      remover_pontuacao, remover_usuario, remover_boulder, verificar_pontuacao_existente, verificar_somente_insucesso)
 
 st.title("Open de Boulder - Kmon de escalada")
 
@@ -58,38 +58,8 @@ if menu == "Cadastro de Participantes":
             if st.button("Remover", key=f"remover_usuario_{usuario[0]}"):
                 remover_usuario(usuario[0])
                 st.warning("Participante removido.")
+                st_autorefresh()
 
-
-elif menu == "Cadastro de Boulder":
-    st.header("Cadastro de Boulder")
-    
-    # Formulário de cadastro de boulders com campo de pontuação
-    with st.form("adicionar_boulder"):
-        nome_boulder = st.text_input("Nome do Boulder")
-        pontuacao_boulder = st.number_input("Pontuação Base do Boulder", min_value=0, step=1)  # Novo campo de pontuação base
-        submit_boulder = st.form_submit_button("Adicionar Boulder")
-        
-        # Validação e cadastro
-        if submit_boulder:
-            if not nome_boulder:
-                st.error("O campo Nome do Boulder é obrigatório.")
-            elif verificar_boulder_existente(nome_boulder):
-                st.error("Esse boulder já está cadastrado. Tente um nome diferente.")
-            else:
-                adicionar_boulder(nome_boulder, pontuacao_boulder)
-                st.success("Boulder adicionado com sucesso!")
-    
-    # Exibir a lista de boulders com opção de remover
-    st.subheader("Lista de Boulders")
-    boulders = listar_boulders()
-    for boulder in boulders:
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.write(f"ID: {boulder[0]}, Nome: {boulder[1]}, Pontuação Base: {boulder[2]}")
-        with col2:
-            if st.button("Remover", key=f"remover_boulder_{boulder[0]}"):
-                remover_boulder(boulder[0])
-                st.warning("Boulder removido.")
 
 elif menu == "Lançamento de Pontuação":
     st.header("Lançamento de Pontuação")
@@ -107,9 +77,33 @@ elif menu == "Lançamento de Pontuação":
         boulder_id = st.selectbox("Selecionar Boulder", [b[0] for b in boulders], format_func=lambda x: [b[1] for b in boulders if b[0] == x][0])
         tipo_pontuacao = st.selectbox("Tipo de Pontuação", TIPOS_PONTUACAO)
         
+        # Verificações de regras de lançamento de pontuação
         if st.button("Lançar Pontuação"):
-            adicionar_pontuacao(usuario_id, boulder_id, tipo_pontuacao)
-            st.success("Pontuação adicionada com sucesso!")
+            if tipo_pontuacao == "Flash":
+                if verificar_flash_existente(usuario_id, boulder_id):
+                    st.error("Erro: Já existe uma pontuação do tipo 'Flash' para este boulder.")
+                elif verificar_pontuacao_existente(usuario_id, boulder_id):
+                    st.error("Erro: Não é possível lançar 'Flash' pois já existe outra pontuação para este boulder.")
+                else:
+                    adicionar_pontuacao(usuario_id, boulder_id, tipo_pontuacao)
+                    st.success("Pontuação 'Flash' adicionada com sucesso!")
+
+            elif tipo_pontuacao == "Cadena":
+                if verificar_flash_existente(usuario_id, boulder_id):
+                    st.error("Erro: Já existe uma pontuação do tipo 'Flash' para este boulder.")
+                elif verificar_somente_insucesso(usuario_id, boulder_id):
+                    adicionar_pontuacao(usuario_id, boulder_id, tipo_pontuacao)
+                    st.success("Pontuação 'Cadena' adicionada com sucesso!")
+                else:
+                    st.error("Erro: Não é possível lançar 'Cadena' pois já existe outra pontuação para este boulder.")
+                
+            elif tipo_pontuacao == "Insucesso":
+                # Verifica se existe "Flash" ou "Cadena" para o boulder e participante
+                if verificar_pontuacao_existente(usuario_id, boulder_id) and not verificar_somente_insucesso(usuario_id, boulder_id):
+                    st.error("Erro: Não é possível lançar 'Insucesso' pois já existe um lançamento 'Flash' ou 'Cadena' para este boulder.")
+                else:
+                    adicionar_pontuacao(usuario_id, boulder_id, tipo_pontuacao)
+                    st.success("Pontuação 'Insucesso' adicionada com sucesso!")
         
         # Listar pontuações do participante selecionado abaixo do botão
         st.subheader("Pontuações do Participante")
@@ -127,6 +121,7 @@ elif menu == "Lançamento de Pontuação":
             st.info("Nenhuma pontuação registrada para este participante.")
     else:
         st.warning("Cadastre pelo menos um participante e um boulder antes de lançar pontuação.")
+
 
 # Intervalo de atualização automática em milissegundos
 intervalo_atualizacao = 10000  # 10 segundos
