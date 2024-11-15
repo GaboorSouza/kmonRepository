@@ -194,7 +194,7 @@ def calcular_ranking():
     conn.close()
 
     # Convertendo os resultados em um DataFrame com rótulos de coluna e posição
-    ranking_df = pd.DataFrame(ranking, columns=["Nome", "Categoria", "Sexo", "Pontuação Total"])
+    ranking_df = pd.DataFrame(ranking, columns=["Nome", "Categoria", "Gênero", "Pontuação Total"])
     ranking_df.index = ranking_df.index + 1
     ranking_df.index = ranking_df.index.astype(str) + "º"
     ranking_df.index.name = "Colocação"
