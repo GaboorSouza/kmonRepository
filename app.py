@@ -30,7 +30,7 @@ if menu == "Cadastro de Participantes":
     with st.form("adicionar_usuario"):
         nome = st.text_input("Nome")
         categoria = st.selectbox("Categoria do Participante", CATEGORIAS, index=0)
-        sexo = st.selectbox("Sexo", SEXO, index=0)
+        sexo = st.selectbox("Gênero", SEXO, index=0)
         submit = st.form_submit_button("Adicionar Participante")
         
         # Validação e cadastro
@@ -40,7 +40,7 @@ if menu == "Cadastro de Participantes":
             elif categoria == "":
                 st.error("Selecione uma categoria para o participante.")
             elif sexo == "":
-                st.error("Selecione o sexo.")
+                st.error("Selecione o gênero.")
             elif verificar_nome_existente(nome):
                 st.error("Esse nome já está cadastrado. Tente um nome diferente.")
             else:
@@ -53,7 +53,7 @@ if menu == "Cadastro de Participantes":
     for usuario in usuarios:
         col1, col2 = st.columns([4, 1])
         with col1:
-            st.write(f"ID: {usuario[0]} | Nome: {usuario[1]} | Sexo: {usuario[3]} | Categoria: {usuario[2]}")
+            st.write(f"ID: {usuario[0]} | Nome: {usuario[1]} | Gênero: {usuario[3]} | Categoria: {usuario[2]}")
         with col2:
             if st.button("Remover", key=f"remover_usuario_{usuario[0]}"):
                 remover_usuario(usuario[0])
@@ -167,13 +167,13 @@ if menu == "Ranking Público":
     
     # Adicionar filtros de Categoria e Sexo
     categoria_selecionada = st.selectbox("Filtrar por Categoria", ["Todas"] + CATEGORIAS[1:])
-    sexo_selecionado = st.selectbox("Filtrar por Sexo", ["Todos", "Masculino", "Feminino"])
+    sexo_selecionado = st.selectbox("Filtrar por Gênero", ["Todos", "Masculino", "Feminino"])
 
     # Aplicar os filtros ao ranking
     if categoria_selecionada != "Todas":
         ranking = ranking[ranking["Categoria"] == categoria_selecionada]
     if sexo_selecionado != "Todos":
-        ranking = ranking[ranking["Sexo"] == sexo_selecionado]
+        ranking = ranking[ranking["Gênero"] == sexo_selecionado]
     
     # Exibir o ranking filtrado
     if not ranking.empty:
